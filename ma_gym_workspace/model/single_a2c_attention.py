@@ -16,7 +16,7 @@ class A2CAttention(object):
     经实测，a_lr在attention下要设置为0.00001
     """
     def __init__(self, state_dim, n_actions, n_agents, gamma=0.99, batch_size=128,
-                 capacity=5000, entropy_weight=0.01, a_lr=0.0001, c_lr=0.001):
+                 capacity=5000, entropy_weight=0.01, a_lr=0.0001, c_lr=0.0001):
         self.gamma = gamma
         self.batch_size = batch_size
         self.entropy_weight = entropy_weight
@@ -96,11 +96,13 @@ class A2CAttention(object):
         prob_a = pi.gather(1, actions).squeeze(-1)
         # print('prob_a', prob_a.shape)
         entropy = Categorical(pi).entropy()
-        actor_loss = - torch.log(prob_a) * advantages.detach() - entropy * self.entropy_weight
 
+        # 尝试在log中加入一个较小的数，防止nan
+        actor_loss = - torch.log(prob_a + 0.01) * advantages.detach() - entropy * self.entropy_weight
         # update actor loss
         self.actor_optimizer.zero_grad()
         actor_loss.mean().backward()
+        print('loss:', actor_loss)
         for name, param in self.actor_cur.named_parameters():
             print('name:', name, 'param gradient:', param.grad)
         self.actor_optimizer.step()
